@@ -1,0 +1,22 @@
+{
+  "name": "remotecontrol_discord",
+  "version": "1.0.0",
+  "description": "Discord Bot for remote-controlling a computer. (WakeOnLan, shutdown, custom scripts, ...)",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/manolol1/remotecontrol_discord.git"
+  },
+  "author": "Mario Ebenhofer",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/manolol1/remotecontrol_discord/issues"
+  },
+  "homepage": "https://github.com/manolol1/remotecontrol_discord#readme",
+  "dependencies": {
+    "discord.js": "^14.15.3"
+  }
+}
