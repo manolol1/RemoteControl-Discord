@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits } = require("discord.js");
+const { Client, GatewayIntentBits, ActivityType } = require("discord.js");
 const { token, command_prefix, wol_mac, client_address } = require("./config.json");
 const wol = require('wake_on_lan');
 
@@ -7,6 +7,7 @@ let help_message = `
 
 :small_blue_diamond: ${command_prefix}help: display this help message
 :small_blue_diamond: ${command_prefix}wakeup: wake up the client computer
+:small_blue_diamond: ${command_prefix}ping: check if the client computer is online
 :small_blue_diamond: ${command_prefix}shutdown: shut down the client computer
 `
 
@@ -16,6 +17,20 @@ const client = new Client({
 
 client.on("ready", () => {
     console.log("Discord Bot is ready! Logged in as " + client.user.tag);
+
+    // update activity depending on client status
+    setInterval(() => {
+        fetch(`http://${client_address}/ping`)
+            .then(response => response.status)
+            .then(status => {
+                if (status == 200) {
+                    client.user.setActivity("Client is online", { type: ActivityType.Watching });
+                } else {
+                    client.user.setActivity("Client is offline", { type: ActivityType.Watching });
+                }
+            })
+            .catch(error => client.user.setActivity("Client is offline"), { type: ActivityType.Watching });
+    }, 1000);
 });
 
 client.on("messageCreate", (message) => {
@@ -53,7 +68,6 @@ client.on("messageCreate", (message) => {
                     .catch(error => message.channel.send(":x: An error occured while sending the shutdown command. Maybe, the client is already offline?"));
                 break;
             }
-
 
             case "ping": {
                 message.channel.send(":clock2: Sending ping command to the client...");
