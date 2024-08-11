@@ -1,6 +1,7 @@
 const { Client, GatewayIntentBits, ActivityType } = require("discord.js");
 const { token, command_prefix, wol_mac, client_address } = require("./config.json");
 const wol = require('wake_on_lan');
+const EventSource = require('eventsource');
 
 // response to the !help command
 let help_message = `
@@ -11,6 +12,8 @@ let help_message = `
 :small_blue_diamond: ${command_prefix}ping: check if the client computer is online
 :small_blue_diamond: ${command_prefix}shutdown: shut down the client computer
 :small_blue_diamond: ${command_prefix}reboot: reboot the client computer
+:small_blue_diamond: ${command_prefix}scripts: list all available scripts on the client computer
+:small_blue_diamond: ${command_prefix}run *<script>*: run a script on the client computer - *example: ${command_prefix}run hello.sh*
 
 :computer: [View Source Code on GitHub](<https://github.com/manolol1/remotecontrol_discord>)
 `
@@ -141,6 +144,104 @@ client.on("messageCreate", async (message) => {
                     message.channel.send(":x: An error occured while sending the ping command. Maybe, the client is offline?")
                 }
                 break;
+            }
+
+            case "scripts": {
+                // fetch all scripts from the client
+                fetch(`http://${client_address}/scripts`)
+                    .then(response => {
+                        if (response.status == 403) {
+                            message.channel.send(":x: Scripts are disabled in the client configuration.");
+                            return;
+                        }
+                        return response.json();
+                    })
+                    .then(scripts => {
+                        if (!scripts) return; // scripts are disabled
+
+                        if (scripts.length > 0) {
+                            const scriptsList = scripts.map(script => `:small_blue_diamond: ${script}\n`);
+                            message.channel.send(`:white_check_mark: **Available Scripts:**\n${scriptsList.join('')}`);
+                        } else {
+                            message.channel.send(":x: No scripts found on the client.");
+                        }
+                    })
+                    .catch(error => message.channel.send(":x: An error occured while fetching the scripts. Maybe, the client is offline?"));
+                break;
+            }
+
+            case "run": {
+                let buffer = ``;
+                
+                // avoid ratelimiting (discord allows 5 messages per 5 seconds)
+                function sendBufferedMessages() {
+                    if (buffer.length > 0) {
+                        message.channel.send(buffer);
+                        buffer = '';
+                    }
+                }
+                const writeInterval = setInterval(sendBufferedMessages, 1000);
+
+                const scriptName = args[1];
+                // check if script name is provided
+                if (!scriptName) {
+                    message.channel.send(":x: Please provide a script name. Use *!scripts* to list all available scripts.");
+                    message.channel.send(`:information: Usage: ${command_prefix}run <script>`);
+                    return;
+                }
+
+                const sse = new EventSource(`http://${client_address}/scripts/${scriptName}`);
+                console.log(`http://${client_address}/scripts/${scriptName}`);
+
+                sse.addEventListener('open', () => {
+                    console.log('Connection opened')
+                });
+
+                sse.addEventListener('start', (event) => {
+                    buffer += `:clock2: Running *${scriptName}*...\n`;
+                });
+
+                sse.addEventListener('stdout', (event) => {
+                    const data = JSON.parse(event.data);
+                    buffer += `:small_blue_diamond: ${data.message}`;
+                });
+
+                sse.addEventListener('stderr', (event) => {
+                    const data = JSON.parse(event.data);
+                    buffer += `:small_orange_diamond: ${data.message}`;
+                });
+
+                sse.addEventListener('err', (event) => {
+                    const data = JSON.parse(event.data);
+                    if (data.code == 404) {
+                        buffer += `:x: Script *${scriptName}* not found.\n`;
+                    } else {
+                        buffer += `:x: An error occured while running the script. Error Code: ${data.code}\n`;
+                        if (data.code == 'EACCES') {
+                            buffer += ":information: The script likely doesn't have execute permissions.\n";
+                        }
+                    }
+                    console.log(data)
+                    sse.close();
+                    clearInterval(writeInterval);
+                    sendBufferedMessages();
+                });
+
+                sse.addEventListener('exit', (event) => {
+                    const data = JSON.parse(event.data);
+                    buffer += `:white_check_mark: Script *${scriptName}* exited with code ${data.code}`;
+                    sse.close();
+                    clearInterval(writeInterval);
+                    sendBufferedMessages();
+                });
+
+                sse.onerror = (error) => {
+                    message.channel.send(":x: An error occured while running the script. Maybe, the server is offline?");
+                    console.error("Error while running Script:", error.message || error);
+                    sse.close();
+                    clearInterval(writeInterval);
+                    sendBufferedMessages();
+                };
             }
         }
     }

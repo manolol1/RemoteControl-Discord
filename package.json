@@ -18,6 +18,7 @@
   "homepage": "https://github.com/manolol1/remotecontrol_discord#readme",
   "dependencies": {
     "discord.js": "^14.15.3",
+    "eventsource": "^2.0.2",
     "wake_on_lan": "^1.0.0",
     "ws": "^8.18.0"
   }
