@@ -176,8 +176,13 @@ client.on("messageCreate", async (message) => {
                 // avoid ratelimiting (discord allows 5 messages per 5 seconds)
                 function sendBufferedMessages() {
                     if (buffer.length > 0) {
-                        message.channel.send(buffer);
-                        buffer = '';
+                        if (buffer.length > 2000) {
+                            message.channel.send(buffer.substring(0, 2000));
+                            buffer = buffer.substring(2000);
+                        } else {
+                            message.channel.send(buffer);
+                            buffer = ``;
+                        }
                     }
                 }
                 const writeInterval = setInterval(sendBufferedMessages, 1000);
