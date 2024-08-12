@@ -172,10 +172,11 @@ client.on("messageCreate", async (message) => {
 
             case "run": {
                 let buffer = ``;
-                
+
                 // avoid ratelimiting (discord allows 5 messages per 5 seconds)
                 function sendBufferedMessages() {
                     if (buffer.length > 0) {
+                        // avoid maximum message length (2000 characters)
                         if (buffer.length > 2000) {
                             message.channel.send(buffer.substring(0, 2000));
                             buffer = buffer.substring(2000);
@@ -208,14 +209,27 @@ client.on("messageCreate", async (message) => {
 
                 sse.addEventListener('stdout', (event) => {
                     const data = JSON.parse(event.data);
-                    buffer += `:small_blue_diamond: ${data.message}`;
+                    if (data.message.trim()) { // add message to buffer, if it's not empty
+                        buffer += `:small_blue_diamond: ${data.message.trim()}\n`;
+                    }
                 });
 
                 sse.addEventListener('stderr', (event) => {
                     const data = JSON.parse(event.data);
-                    buffer += `:small_orange_diamond: ${data.message}`;
+                    if (data.message.trim()) { // add message to buffer, if it's not empty
+                        buffer += `:small_orange_diamond: ${data.message.trim()}\n`;
+                    }
                 });
 
+                sse.addEventListener('exit', (event) => {
+                    const data = JSON.parse(event.data);
+                    buffer += `:white_check_mark: Script *${scriptName}* exited with code ${data.code}`;
+                    sse.close();
+                    clearInterval(writeInterval);
+                    sendBufferedMessages();
+                });
+
+                // user defined errors
                 sse.addEventListener('err', (event) => {
                     const data = JSON.parse(event.data);
                     if (data.code == 404) {
@@ -232,16 +246,9 @@ client.on("messageCreate", async (message) => {
                     sendBufferedMessages();
                 });
 
-                sse.addEventListener('exit', (event) => {
-                    const data = JSON.parse(event.data);
-                    buffer += `:white_check_mark: Script *${scriptName}* exited with code ${data.code}`;
-                    sse.close();
-                    clearInterval(writeInterval);
-                    sendBufferedMessages();
-                });
-
+                // SSE connection errors (e.g. server offline)
                 sse.onerror = (error) => {
-                    message.channel.send(":x: An error occured while running the script. Maybe, the server is offline?");
+                    message.channel.send(":x: An error occured while running the script. Maybe, the client is offline?");
                     console.error("Error while running Script:", error.message || error);
                     sse.close();
                     clearInterval(writeInterval);
