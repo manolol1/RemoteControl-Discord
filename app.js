@@ -147,26 +147,56 @@ client.on("messageCreate", async (message) => {
             }
 
             case "scripts": {
-                // fetch all scripts from the client
-                fetch(`http://${client_address}/scripts`)
-                    .then(response => {
-                        if (response.status == 403) {
-                            message.channel.send(":x: Scripts are disabled in the client configuration.");
+                if (args.length > 1) {
+                    if (args[1] == "show") {
+                        if (args.length < 3) {
+                            message.channel.send(":x: Please provide a script name. Use *!scripts* to list all available scripts.");
+                            message.channel.send(`:information: Usage: ${command_prefix}scripts show *<script>*`);
                             return;
-                        }
-                        return response.json();
-                    })
-                    .then(scripts => {
-                        if (!scripts) return; // scripts are disabled
-
-                        if (scripts.length > 0) {
-                            const scriptsList = scripts.map(script => `:small_blue_diamond: ${script}\n`);
-                            message.channel.send(`:white_check_mark: **Available Scripts:**\n${scriptsList.join('')}`);
                         } else {
-                            message.channel.send(":x: No scripts found on the client.");
+                            // fetch script content from the client
+                            fetch(`http://${client_address}/scripts/${args[2]}/show`)
+                                .then(response => {
+                                    // handle errors
+                                    if (response.status == 404) {
+                                        message.channel.send(":x: Script not found.");
+                                        return;
+                                    } else if (response.status == 403) {
+                                        message.channel.send(":x: Scripts are disabled in the client configuration.");
+                                        return;
+                                    }
+                                    return response.text();
+                                })
+                                .then(script => {
+                                    if (!script) return; // script not found or scripts are disabled
+
+                                    message.channel.send(`:white_check_mark: **Script *${args[2]}*:**\n\`\`\`${script}\`\`\``);
+                                })
+                                .catch(error => message.channel.send(":x: An error occured while fetching the scripts. Maybe, the client is offline?"));
                         }
-                    })
-                    .catch(error => message.channel.send(":x: An error occured while fetching the scripts. Maybe, the client is offline?"));
+                    }
+                } else {
+                    // fetch all scripts from the client
+                    fetch(`http://${client_address}/scripts`)
+                        .then(response => {
+                            if (response.status == 403) {
+                                message.channel.send(":x: Scripts are disabled in the client configuration.");
+                                return;
+                            }
+                            return response.json();
+                        })
+                        .then(scripts => {
+                            if (!scripts) return; // scripts are disabled
+
+                            if (scripts.length > 0) {
+                                const scriptsList = scripts.map(script => `:small_blue_diamond: ${script}\n`);
+                                message.channel.send(`:white_check_mark: **Available Scripts:**\n${scriptsList.join('')}`);
+                            } else {
+                                message.channel.send(":x: No scripts found on the client.");
+                            }
+                        })
+                        .catch(error => message.channel.send(":x: An error occured while fetching the scripts. Maybe, the client is offline?"));
+                }
                 break;
             }
 
@@ -196,7 +226,7 @@ client.on("messageCreate", async (message) => {
                     return;
                 }
 
-                const sse = new EventSource(`http://${client_address}/scripts/${scriptName}`);
+                const sse = new EventSource(`http://${client_address}/scripts/${scriptName}/run`);
                 console.log(`http://${client_address}/scripts/${scriptName}`);
 
                 sse.addEventListener('open', () => {
