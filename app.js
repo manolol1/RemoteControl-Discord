@@ -1,5 +1,5 @@
 const { Client, GatewayIntentBits, ActivityType } = require("discord.js");
-const { token, command_prefix, wol_mac, client_address } = require("./config.json");
+const { token, command_prefix, client_mac, client_address } = require("./config.json");
 const wol = require('wake_on_lan');
 const EventSource = require('eventsource');
 
@@ -76,7 +76,7 @@ client.on("messageCreate", async (message) => {
 
             case "wakeup": {
                 // send WOL packet to client
-                wol.wake(wol_mac, function (error) {
+                wol.wake(client_mac, function (error) {
                     if (error) {
                         message.channel.send(":x: An error occured while sending the WOL packet.")
                     } else {

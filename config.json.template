@@ -2,5 +2,5 @@
 	"token": "your-token-goes-here",
 	"command_prefix": "!",
 	"client_address": "127.0.0.1:2052",
-	"wol_mac": "a1:b2:c3:d4:e5:f6"
+	"client_mac": "a1:b2:c3:d4:e5:f6"
 }
