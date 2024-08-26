@@ -1,5 +1,5 @@
-const { Client, GatewayIntentBits, ActivityType } = require("discord.js");
-const { token, command_prefix, client_mac, client_address } = require("./config.json");
+const { Client, GatewayIntentBits, Partials, ActivityType } = require("discord.js");
+const { token, command_prefix, client_mac, client_address, dm_enabled } = require("./config.json");
 const wol = require('wake_on_lan');
 const EventSource = require('eventsource');
 
@@ -19,7 +19,8 @@ let help_message = `
 `
 
 const client = new Client({
-    intents: [GatewayIntentBits.GuildMessages, GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent]
+    'intents': [GatewayIntentBits.GuildMessages, GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages],
+    'partials': [Partials.Channel]
 });
 
 // sends a ping request to the client. Returns true if successful, false if an error occured
@@ -65,6 +66,13 @@ client.on("ready", () => {
 
 // react to messages starting with the command prefix
 client.on("messageCreate", async (message) => {
+    if (message.author.bot) return; // ignore messages from bots
+
+    if (message.channel.type == 1 && !dm_enabled) {
+        message.channel.send(":x: Direct Messages are disabled.");
+        return;
+    }
+
     if (message.content.startsWith(command_prefix)) {
         const args = message.content.slice(command_prefix.length).trim().split(/ +/g); // split arguments, command is ar args[0]
 
