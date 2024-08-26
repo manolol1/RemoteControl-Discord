@@ -56,9 +56,9 @@ client.on("ready", () => {
     // update activity depending on client status
     setInterval(async () => {
         if (await ping()) {
-            client.user.setActivity("Client is online", { type: ActivityType.Watching });
+            client.user.setActivity("✅ Client is online", { type: ActivityType.Custom });
         } else {
-            client.user.setActivity("Client is offline", { type: ActivityType.Watching });
+            client.user.setActivity("❌ Client is offline", { type: ActivityType.Custom });
         }
     }, 1000);
 });
