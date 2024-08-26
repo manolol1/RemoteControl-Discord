@@ -1,0 +1,19 @@
+token: "your-token-goes-here"
+command_prefix: "!"
+client_address: "127.0.0.1:2052"
+client_mac: "a1:b2:c3:d4:e5:f6"
+dm_enabled: false
+
+# allowed placeholder: ${command_prefix}
+help_message: |
+  :white_check_mark: **RemoteControl Commands:**
+
+  :small_blue_diamond: ${command_prefix}help: display this help message
+  :small_blue_diamond: ${command_prefix}wakeup: wake up the client computer
+  :small_blue_diamond: ${command_prefix}ping: check if the client computer is online
+  :small_blue_diamond: ${command_prefix}shutdown: shut down the client computer
+  :small_blue_diamond: ${command_prefix}reboot: reboot the client computer
+  :small_blue_diamond: ${command_prefix}scripts: list all available scripts on the client computer
+  :small_blue_diamond: ${command_prefix}run *<script>*: run a script on the client computer - *example: ${command_prefix}run hello.sh*
+
+  :computer: [View Source Code on GitHub](<https://github.com/manolol1/remotecontrol_discord>)

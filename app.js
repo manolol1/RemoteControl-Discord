@@ -1,22 +1,25 @@
 const { Client, GatewayIntentBits, Partials, ActivityType } = require("discord.js");
-const { token, command_prefix, client_mac, client_address, dm_enabled } = require("./config.json");
 const wol = require('wake_on_lan');
 const EventSource = require('eventsource');
+const fs = require('fs');
+const yaml = require('yaml');
 
-// response to the !help command
-let help_message = `
-:white_check_mark: **RemoteControl Commands:**
+// parse config file
+console.log("Parsing config file...");
+let config;
+try {
+    const file = fs.readFileSync('./config.yaml', 'utf8');
+    config = yaml.parse(file);
 
-:small_blue_diamond: ${command_prefix}help: display this help message
-:small_blue_diamond: ${command_prefix}wakeup: wake up the client computer
-:small_blue_diamond: ${command_prefix}ping: check if the client computer is online
-:small_blue_diamond: ${command_prefix}shutdown: shut down the client computer
-:small_blue_diamond: ${command_prefix}reboot: reboot the client computer
-:small_blue_diamond: ${command_prefix}scripts: list all available scripts on the client computer
-:small_blue_diamond: ${command_prefix}run *<script>*: run a script on the client computer - *example: ${command_prefix}run hello.sh*
+    // Replace placeholders in the help_message
+    if (config.help_message) {
+        config.help_message = config.help_message.replace(/\${command_prefix}/g, config.command_prefix);
+    }
 
-:computer: [View Source Code on GitHub](<https://github.com/manolol1/remotecontrol_discord>)
-`
+    console.log("Config file parsed successfully.");
+} catch (e) {
+    console.error("Error while parsing config file: " + e);
+}
 
 const client = new Client({
     'intents': [GatewayIntentBits.GuildMessages, GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent, GatewayIntentBits.DirectMessages],
@@ -26,7 +29,7 @@ const client = new Client({
 // sends a ping request to the client. Returns true if successful, false if an error occured
 async function ping() {
     try {
-        const response = await fetch(`http://${client_address}/ping`);
+        const response = await fetch(`http://${config.client_address}/ping`);
         return response.status == 200;
     } catch (error) {
         return false;
@@ -68,17 +71,17 @@ client.on("ready", () => {
 client.on("messageCreate", async (message) => {
     if (message.author.bot) return; // ignore messages from bots
 
-    if (message.channel.type == 1 && !dm_enabled) {
+    if (message.channel.type == 1 && !config.dm_enabled) {
         message.channel.send(":x: Direct Messages are disabled.");
         return;
     }
 
-    if (message.content.startsWith(command_prefix)) {
-        const args = message.content.slice(command_prefix.length).trim().split(/ +/g); // split arguments, command is ar args[0]
+    if (message.content.startsWith(config.command_prefix)) {
+        const args = message.content.slice(config.command_prefix.length).trim().split(/ +/g); // split arguments, command is ar args[0]
 
         switch (args[0]) {
             case "help": {
-                message.channel.send(help_message);
+                message.channel.send(config.help_message);
                 break;
             }
 
@@ -88,7 +91,7 @@ client.on("messageCreate", async (message) => {
                     message.channel.send(":white_check_mark: Client is already online.");
                 } else {
                     // send WOL packet to client
-                    wol.wake(client_mac, function (error) {
+                    wol.wake(config.client_mac, function (error) {
                         if (error) {
                             message.channel.send(":x: An error occured while sending the WOL packet.")
                         } else {
@@ -109,7 +112,7 @@ client.on("messageCreate", async (message) => {
             case "shutdown": {
                 message.channel.send(":clock2: Sending shutdown command to the client...");
                 // send shutdown command and wait for response or timeout
-                fetch(`http://${client_address}/shutdown`)
+                fetch(`http://${config.client_address}/shutdown`)
                     .then(response => response.status)
                     .then(status => {
                         if (status == 200) {
@@ -125,7 +128,7 @@ client.on("messageCreate", async (message) => {
             case "reboot": {
                 message.channel.send(":clock2: Sending reboot command to the client...");
                 // send reboot command and wait for response or timeout
-                fetch(`http://${client_address}/reboot`)
+                fetch(`http://${config.client_address}/reboot`)
                     .then(response => response.status)
                     .then(status => {
                         if (status == 200) {
@@ -164,11 +167,11 @@ client.on("messageCreate", async (message) => {
                     if (args[1] == "show") {
                         if (args.length < 3) {
                             message.channel.send(":x: Please provide a script name. Use *!scripts* to list all available scripts.");
-                            message.channel.send(`:information: Usage: ${command_prefix}scripts show *<script>*`);
+                            message.channel.send(`:information: Usage: ${config.command_prefix}scripts show *<script>*`);
                             return;
                         } else {
                             // fetch script content from the client
-                            fetch(`http://${client_address}/scripts/${args[2]}/show`)
+                            fetch(`http://${config.client_address}/scripts/${args[2]}/show`)
                                 .then(response => {
                                     // handle errors
                                     if (response.status == 404) {
@@ -190,7 +193,7 @@ client.on("messageCreate", async (message) => {
                     }
                 } else {
                     // fetch all scripts from the client
-                    fetch(`http://${client_address}/scripts`)
+                    fetch(`http://${config.client_address}/scripts`)
                         .then(response => {
                             if (response.status == 403) {
                                 message.channel.send(":x: Scripts are disabled in the client configuration.");
@@ -235,12 +238,12 @@ client.on("messageCreate", async (message) => {
                 // check if script name is provided
                 if (!scriptName) {
                     message.channel.send(":x: Please provide a script name. Use *!scripts* to list all available scripts.");
-                    message.channel.send(`:information: Usage: ${command_prefix}run <script>`);
+                    message.channel.send(`:information: Usage: ${config.command_prefix}run <script>`);
                     return;
                 }
 
-                const sse = new EventSource(`http://${client_address}/scripts/${scriptName}/run`);
-                console.log(`http://${client_address}/scripts/${scriptName}`);
+                const sse = new EventSource(`http://${config.client_address}/scripts/${scriptName}/run`);
+                console.log(`http://${config.client_address}/scripts/${scriptName}`);
 
                 sse.addEventListener('open', () => {
                     console.log('Connection opened')
@@ -302,4 +305,4 @@ client.on("messageCreate", async (message) => {
     }
 });
 
-client.login(token);
+client.login(config.token);
