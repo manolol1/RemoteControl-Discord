@@ -75,20 +75,25 @@ client.on("messageCreate", async (message) => {
             }
 
             case "wakeup": {
-                // send WOL packet to client
-                wol.wake(client_mac, function (error) {
-                    if (error) {
-                        message.channel.send(":x: An error occured while sending the WOL packet.")
-                    } else {
-                        message.channel.send(":white_check_mark: WOL packet sent successfully.");
-                    }
-                })
-
-                // wait until client is online
-                if (await waitUntilOnline()) {
-                    message.channel.send(":white_check_mark: Client is now online.");
+                // check if client is already online
+                if (await ping()) {
+                    message.channel.send(":white_check_mark: Client is already online.");
                 } else {
-                    message.channel.send(":warning: Client is still offline. Maybe, the wakeup request failed?");
+                    // send WOL packet to client
+                    wol.wake(client_mac, function (error) {
+                        if (error) {
+                            message.channel.send(":x: An error occured while sending the WOL packet.")
+                        } else {
+                            message.channel.send(":white_check_mark: WOL packet sent successfully.");
+                        }
+                    })
+
+                    // wait until client is online
+                    if (await waitUntilOnline()) {
+                        message.channel.send(":white_check_mark: Client is now online.");
+                    } else {
+                        message.channel.send(":warning: Client is still offline. Maybe, the wakeup request failed?");
+                    }
                 }
                 break;
             }
